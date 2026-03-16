@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SeasonIQ — Seasonal Sales & Revenue Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --summer: #FF6B35;
+    --summer-light: #FFE4D6;
+    --winter: #4A90D9;
+    --winter-light: #D6E8FF;
+    --monsoon: #2ECC71;
+    --monsoon-light: #D0F5E2;
+    --autumn: #E67E22;
+    --autumn-light: #FDEBD0;
+    --bg: #0A0E1A;
+    --bg2: #111827;
+    --bg3: #1C2537;
+    --card: #151D2E;
+    --border: rgba(255,255,255,0.08);
+    --text: #F0F4FF;
+    --muted: #8899B4;
+    --accent: #F5C842;
+    --font-display: 'Playfair Display', serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(10,14,26,0.85);
+    backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2.5rem; height: 64px;
+  }
+  .logo {
+    font-family: var(--font-display);
+    font-size: 1.5rem; font-weight: 900;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer;
+  }
+  .logo span { color: var(--text); }
+  .nav-links { display: flex; gap: 6px; }
+  .nav-links a {
+    color: var(--muted); text-decoration: none;
+    font-size: 0.88rem; font-weight: 500;
+    padding: 6px 14px; border-radius: 8px;
+    transition: all 0.2s;
+  }
+  .nav-links a:hover, .nav-links a.active {
+    color: var(--text);
+    background: rgba(255,255,255,0.07);
+  }
+  .nav-actions { display: flex; gap: 10px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 18px; border-radius: 9px; border: none;
+    font-family: var(--font-body); font-size: 0.84rem;
+    font-weight: 600; cursor: pointer; transition: all 0.2s;
+    text-decoration: none;
+  }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); }
+  .btn-primary { background: var(--accent); color: #0A0E1A; }
+  .btn-primary:hover { background: #f0bb30; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(245,200,66,0.35); }
+  .btn-pdf { background: #e74c3c; color: white; }
+  .btn-pdf:hover { background: #c0392b; }
+  .btn-excel { background: #27ae60; color: white; }
+  .btn-excel:hover { background: #1e8449; }
+
+  /* ── PAGES ── */
+  .page { display: none; padding-top: 80px; min-height: 100vh; }
+  .page.active { display: block; animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
+
+  /* ── HERO ── */
+  #hero {
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center;
+    min-height: 100vh; padding: 80px 2rem 4rem;
+  }
+  .hero-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+  }
+  .hero-glow {
+    position: absolute; width: 700px; height: 700px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(245,200,66,0.08) 0%, transparent 70%);
+    top: 50%; left: 50%; transform: translate(-50%,-60%);
+    pointer-events: none;
+  }
+  .hero-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(245,200,66,0.12); border: 1px solid rgba(245,200,66,0.3);
+    color: var(--accent); border-radius: 50px;
+    padding: 5px 16px; font-size: 0.78rem; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    margin-bottom: 1.6rem;
+  }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2.8rem, 6vw, 5.2rem);
+    font-weight: 900; line-height: 1.05;
+    color: var(--text); letter-spacing: -1.5px;
+    max-width: 900px; margin-bottom: 1.4rem;
+  }
+  .hero h1 em { color: var(--accent); font-style: normal; }
+  .hero p {
+    color: var(--muted); font-size: 1.12rem; max-width: 600px;
+    line-height: 1.7; margin-bottom: 2.5rem;
+  }
+  .hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .season-pills {
+    display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+    margin-top: 4rem; position: relative; z-index: 1;
+  }
+  .s-pill {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 18px;
+    font-size: 0.85rem; font-weight: 500; color: var(--text);
+    cursor: pointer; transition: all 0.22s;
+  }
+  .s-pill:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .s-pill .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* ── SECTION HEADER ── */
+  .section-header { margin-bottom: 2.5rem; }
+  .section-label {
+    font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 0.5rem;
+  }
+  .section-header h2 {
+    font-family: var(--font-display); font-size: 2.2rem;
+    font-weight: 800; color: var(--text); letter-spacing: -0.5px;
+  }
+  .section-header p { color: var(--muted); font-size: 0.95rem; margin-top: 0.4rem; }
+
+  /* ── CONTAINER ── */
+  .container { max-width: 1300px; margin: 0 auto; padding: 3rem 2rem; }
+
+  /* ── STATS ROW ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 2.5rem; }
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.4rem 1.6rem;
+    position: relative; overflow: hidden; transition: transform 0.2s;
+  }
+  .stat-card:hover { transform: translateY(-2px); }
+  .stat-card .sc-label { color: var(--muted); font-size: 0.8rem; font-weight: 500; margin-bottom: 6px; }
+  .stat-card .sc-value {
+    font-size: 2rem; font-weight: 700; color: var(--text);
+    font-family: var(--font-display); letter-spacing: -1px;
+  }
+  .stat-card .sc-change {
+    font-size: 0.8rem; font-weight: 600; margin-top: 4px;
+  }
+  .stat-card .sc-change.up { color: #2ecc71; }
+  .stat-card .sc-change.down { color: #e74c3c; }
+  .stat-card .sc-icon {
+    position: absolute; right: 1.2rem; top: 50%;
+    transform: translateY(-50%); font-size: 2.2rem; opacity: 0.15;
+  }
+
+  /* ── CHART CARDS ── */
+  .chart-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .chart-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 18px; padding: 1.6rem;
+  }
+  .chart-title {
+    font-family: var(--font-display); font-size: 1.1rem;
+    font-weight: 700; margin-bottom: 1.2rem; color: var(--text);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .chart-title span { color: var(--muted); font-size: 0.8rem; font-family: var(--font-body); font-weight: 400; }
+  canvas { max-height: 320px; }
+
+  /* ── TABLE ── */
+  .table-wrap {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 18px; overflow: hidden;
+  }
+  .table-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.4rem 1.8rem;
+    border-bottom: 1px solid var(--border);
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: var(--bg3); color: var(--muted);
+    font-size: 0.75rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 12px 18px; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr { transition: background 0.15s; }
+  tbody tr:hover { background: rgba(255,255,255,0.025); }
+  tbody td {
+    padding: 13px 18px; font-size: 0.88rem; color: var(--text);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 6px;
+    font-size: 0.75rem; font-weight: 600;
+  }
+
+  /* ── SEASON PAGE ── */
+  .season-hero {
+    border-radius: 24px; padding: 3rem;
+    margin-bottom: 2rem; position: relative; overflow: hidden;
+  }
+  .season-hero h2 {
+    font-family: var(--font-display); font-size: 2.8rem; font-weight: 900;
+    margin-bottom: 0.5rem; letter-spacing: -1px;
+  }
+  .season-hero p { font-size: 1rem; opacity: 0.8; max-width: 500px; }
+  .season-hero .big-icon {
+    position: absolute; right: 3rem; top: 50%;
+    transform: translateY(-50%); font-size: 7rem; opacity: 0.12;
+  }
+  .category-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 2rem; }
+  .cat-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 1.3rem;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .cat-card:hover { border-color: rgba(255,255,255,0.2); transform: translateY(-2px); }
+  .cat-card .cat-name { font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; }
+  .cat-card .cat-rev { font-size: 1.4rem; font-weight: 700; font-family: var(--font-display); }
+  .cat-card .cat-units { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  .progress-bar { height: 5px; border-radius: 3px; background: var(--bg3); margin-top: 10px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
+
+  /* ── PREDICT PAGE ── */
+  .predict-info {
+    display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; margin-bottom: 2rem;
+  }
+  .predict-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.5rem;
+  }
+  .predict-card h4 { font-size: 0.85rem; color: var(--muted); margin-bottom: 8px; }
+  .predict-card .pv { font-size: 1.8rem; font-weight: 700; font-family: var(--font-display); }
+  .confidence-bar { height: 8px; border-radius: 4px; background: var(--bg3); margin-top: 10px; }
+  .confidence-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #f5c842, #ff6b35); }
+
+  /* ── EXPORT TOOLBAR ── */
+  .export-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 14px; padding: 1rem 1.5rem; margin-bottom: 2rem;
+  }
+  .export-bar span { color: var(--muted); font-size: 0.9rem; }
+  .export-btns { display: flex; gap: 10px; }
+
+  /* ── FILTER ROW ── */
+  .filter-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 2rem; align-items: center; }
+  .filter-btn {
+    padding: 7px 16px; border-radius: 9px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); font-size: 0.83rem;
+    font-family: var(--font-body); font-weight: 500; cursor: pointer;
+    transition: all 0.18s;
+  }
+  .filter-btn.active, .filter-btn:hover {
+    color: var(--text); border-color: rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.06);
+  }
+  .filter-btn.season-summer.active { border-color: var(--summer); color: var(--summer); background: rgba(255,107,53,0.1); }
+  .filter-btn.season-winter.active { border-color: var(--winter); color: var(--winter); background: rgba(74,144,217,0.1); }
+  .filter-btn.season-monsoon.active { border-color: var(--monsoon); color: var(--monsoon); background: rgba(46,204,113,0.1); }
+  .filter-btn.season-autumn.active { border-color: var(--autumn); color: var(--autumn); background: rgba(230,126,34,0.1); }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem;
+    text-align: center; color: var(--muted); font-size: 0.83rem;
+  }
+  footer strong { color: var(--accent); }
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:900px) {
+    .stats-grid { grid-template-columns: repeat(2,1fr); }
+    .chart-grid { grid-template-columns: 1fr; }
+    .category-grid { grid-template-columns: repeat(2,1fr); }
+    .predict-info { grid-template-columns: 1fr; }
+    nav { padding: 0 1.2rem; }
+    .nav-links { display: none; }
+  }
+  @media(max-width:600px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .category-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── LOADER ── */
+  .skeleton {
+    background: linear-gradient(90deg, var(--bg3) 25%, var(--bg2) 50%, var(--bg3) 75%);
+    background-size: 400% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px;
+  }
+  @keyframes shimmer { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo" onclick="showPage('home')">🌡 Season<span>IQ</span></div>
+  <div class="nav-links">
+    <a href="#" onclick="showPage('home')" id="nav-home" class="active">Dashboard</a>
+    <a href="#" onclick="showPage('summer')" id="nav-summer">☀ Summer</a>
+    <a href="#" onclick="showPage('winter')" id="nav-winter">❄ Winter</a>
+    <a href="#" onclick="showPage('monsoon')" id="nav-monsoon">🌧 Monsoon</a>
+    <a href="#" onclick="showPage('autumn')" id="nav-autumn">🍂 Autumn</a>
+    <a href="#" onclick="showPage('predict')" id="nav-predict">🔮 Forecast</a>
+    <a href="#" onclick="showPage('report')" id="nav-report">📊 Report</a>
+  </div>
+  <div class="nav-actions">
+    <button class="btn btn-ghost" onclick="exportExcel()">⬇ Excel</button>
+    <button class="btn btn-primary" onclick="exportPDF()">⬇ PDF</button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: HOME / DASHBOARD
+══════════════════════════════════════════════════ -->
+<div id="page-home" class="page active">
+  <!-- HERO -->
+  <section id="hero">
+    <div class="hero-grid"></div>
+    <div class="hero-glow"></div>
+    <div class="hero-tag">📈 Seasonal Intelligence Platform</div>
+    <div class="hero">
+      <h1>Turn <em>Seasons</em> into<br/>Revenue Strategy</h1>
+      <p>Analyze product sales across all four seasons, uncover category trends, and predict future performance with AI-driven forecasting.</p>
+      <div class="hero-ctas">
+        <button class="btn btn-primary" onclick="showPage('report')" style="font-size:0.95rem;padding:12px 28px;">View Full Report</button>
+        <button class="btn btn-ghost" onclick="showPage('predict')" style="font-size:0.95rem;padding:12px 28px;">🔮 See Predictions</button>
+      </div>
+    </div>
+    <div class="season-pills">
+      <div class="s-pill" onclick="showPage('summer')"><span class="dot" style="background:var(--summer)"></span>☀ Summer Analysis</div>
+      <div class="s-pill" onclick="showPage('winter')"><span class="dot" style="background:var(--winter)"></span>❄ Winter Analysis</div>
+      <div class="s-pill" onclick="showPage('monsoon')"><span class="dot" style="background:var(--monsoon)"></span>🌧 Monsoon Analysis</div>
+      <div class="s-pill" onclick="showPage('autumn')"><span class="dot" style="background:var(--autumn)"></span>🍂 Autumn Analysis</div>
+    </div>
+  </section>
+
+  <!-- DASHBOARD BODY -->
+  <div class="container">
+    <!-- stats -->
+    <div class="stats-grid">
+      <div class="stat-card" style="border-top:3px solid var(--accent)">
+        <div class="sc-label">Total Annual Revenue</div>
+        <div class="sc-value">₹48.7M</div>
+        <div class="sc-change up">↑ 14.2% vs last year</div>
+        <div class="sc-icon">💰</div>
+      </div>
+      <div class="stat-card" style="border-top:3px solid var(--summer)">
+        <div class="sc-label">Best Season</div>
+        <div class="sc-value" style="color:var(--summer)">Summer</div>
+        <div class="sc-change up">↑ ₹15.4M revenue</div>
+        <div class="sc-icon">☀</div>
+      </div>
+      <div class="stat-card" style="border-top:3px solid #a855f7">
+        <div class="sc-label">Total Units Sold</div>
+        <div class="sc-value">2.3M</div>
+        <div class="sc-change up">↑ 9.6% growth</div>
+        <div class="sc-icon">📦</div>
+      </div>
+      <div class="stat-card" style="border-top:3px solid #06b6d4">
+        <div class="sc-label">Avg. Order Value</div>
+        <div class="sc-value">₹2,120</div>
+        <div class="sc-change up">↑ 4.3% increase</div>
+        <div class="sc-icon">🎯</div>
+      </div>
+    </div>
+
+    <!-- charts row -->
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">Monthly Revenue Breakdown <span>All seasons · FY 2024–25</span></div>
+        <canvas id="mainRevChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Revenue by Season <span>Share %</span></div>
+        <canvas id="seasonPieChart"></canvas>
+      </div>
+    </div>
+
+    <!-- second row -->
+    <div class="chart-grid" style="grid-template-columns:1fr 1fr">
+      <div class="chart-card">
+        <div class="chart-title">Category Performance by Season <span>Revenue ₹M</span></div>
+        <canvas id="catBarChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Units Sold Trend <span>Monthly units (000s)</span></div>
+        <canvas id="unitsChart"></canvas>
+      </div>
+    </div>
+
+    <!-- quick data table -->
+    <div class="table-wrap" style="margin-top:2rem">
+      <div class="table-header">
+        <div>
+          <div style="font-weight:700;font-size:1rem">Season Summary Table</div>
+          <div style="color:var(--muted);font-size:0.82rem">Aggregated by season and category</div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-excel" onclick="exportExcel()">⬇ Excel</button>
+          <button class="btn btn-pdf" onclick="exportPDF()">⬇ PDF</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="summary-table">
+          <thead>
+            <tr>
+              <th>Season</th><th>Category</th><th>Units Sold</th>
+              <th>Revenue</th><th>Avg Price</th><th>Growth YoY</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="summary-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SEASON PAGES (generated dynamically)
+══════════════════════════════════════════════════ -->
+<div id="page-summer" class="page"></div>
+<div id="page-winter" class="page"></div>
+<div id="page-monsoon" class="page"></div>
+<div id="page-autumn" class="page"></div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: FORECAST / PREDICT
+══════════════════════════════════════════════════ -->
+<div id="page-predict" class="page">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label">🔮 Predictive Analytics</div>
+      <h2>Future Season Forecast</h2>
+      <p>AI-driven revenue predictions for FY 2025–26 based on historical trends and market signals.</p>
+    </div>
+
+    <div class="predict-info">
+      <div class="predict-card" style="border-top:3px solid var(--summer)">
+        <h4>☀ Summer 2025–26 Forecast</h4>
+        <div class="pv" style="color:var(--summer)">₹17.1M</div>
+        <div style="color:var(--muted);font-size:0.8rem;margin-top:4px">+11.3% projected growth</div>
+        <div class="confidence-bar"><div class="confidence-fill" style="width:87%;background:var(--summer)"></div></div>
+        <div style="color:var(--muted);font-size:0.75rem;margin-top:5px">Confidence: 87%</div>
+      </div>
+      <div class="predict-card" style="border-top:3px solid var(--winter)">
+        <h4>❄ Winter 2025–26 Forecast</h4>
+        <div class="pv" style="color:var(--winter)">₹13.8M</div>
+        <div style="color:var(--muted);font-size:0.8rem;margin-top:4px">+10.8% projected growth</div>
+        <div class="confidence-bar"><div class="confidence-fill" style="width:82%;background:var(--winter)"></div></div>
+        <div style="color:var(--muted);font-size:0.75rem;margin-top:5px">Confidence: 82%</div>
+      </div>
+      <div class="predict-card" style="border-top:3px solid var(--monsoon)">
+        <h4>🌧 Monsoon 2025–26 Forecast</h4>
+        <div class="pv" style="color:var(--monsoon)">₹11.9M</div>
+        <div style="color:var(--muted);font-size:0.8rem;margin-top:4px">+8.5% projected growth</div>
+        <div class="confidence-bar"><div class="confidence-fill" style="width:79%;background:var(--monsoon)"></div></div>
+        <div style="color:var(--muted);font-size:0.75rem;margin-top:5px">Confidence: 79%</div>
+      </div>
+      <div class="predict-card" style="border-top:3px solid var(--autumn)">
+        <h4>🍂 Autumn 2025–26 Forecast</h4>
+        <div class="pv" style="color:var(--autumn)">₹9.4M</div>
+        <div style="color:var(--muted);font-size:0.8rem;margin-top:4px">+7.2% projected growth</div>
+        <div class="confidence-bar"><div class="confidence-fill" style="width:75%;background:var(--autumn)"></div></div>
+        <div style="color:var(--muted);font-size:0.75rem;margin-top:5px">Confidence: 75%</div>
+      </div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:2rem">
+      <div class="chart-title">Historical vs Predicted Revenue <span>FY 2022–23 to FY 2025–26</span></div>
+      <canvas id="predictChart" style="max-height:380px"></canvas>
+    </div>
+
+    <div class="chart-grid" style="grid-template-columns:1fr 1fr">
+      <div class="chart-card">
+        <div class="chart-title">Predicted Category Leaders <span>2025–26</span></div>
+        <canvas id="predCatChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Risk & Opportunity Matrix <span>Season × Category</span></div>
+        <canvas id="riskChart"></canvas>
+      </div>
+    </div>
+
+    <div class="export-bar" style="margin-top:2rem">
+      <span>📄 Export complete forecast report</span>
+      <div class="export-btns">
+        <button class="btn btn-excel" onclick="exportExcel()">⬇ Excel Report</button>
+        <button class="btn btn-pdf" onclick="exportPDF()">⬇ PDF Report</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE: FULL REPORT
+══════════════════════════════════════════════════ -->
+<div id="page-report" class="page">
+  <div class="container">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem">
+      <div class="section-header" style="margin-bottom:0">
+        <div class="section-label">📊 Full Report</div>
+        <h2>Seasonal Impact Analysis</h2>
+        <p>Complete breakdown across all seasons, categories, and metrics</p>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-excel" onclick="exportExcel()">⬇ Export Excel</button>
+        <button class="btn btn-pdf" onclick="exportPDF()">⬇ Export PDF</button>
+      </div>
+    </div>
+
+    <div class="filter-row" id="report-filters">
+      <button class="filter-btn active" onclick="filterReport('all',this)">All Seasons</button>
+      <button class="filter-btn season-summer" onclick="filterReport('Summer',this)">☀ Summer</button>
+      <button class="filter-btn season-winter" onclick="filterReport('Winter',this)">❄ Winter</button>
+      <button class="filter-btn season-monsoon" onclick="filterReport('Monsoon',this)">🌧 Monsoon</button>
+      <button class="filter-btn season-autumn" onclick="filterReport('Autumn',this)">🍂 Autumn</button>
+    </div>
+
+    <div class="table-wrap">
+      <div style="overflow-x:auto">
+        <table id="full-report-table">
+          <thead>
+            <tr>
+              <th>Season</th><th>Month</th><th>Category</th>
+              <th>Product</th><th>Units Sold</th><th>Revenue (₹)</th>
+              <th>Avg Price (₹)</th><th>Cost (₹)</th><th>Profit (₹)</th>
+              <th>Margin %</th><th>Growth %</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="full-report-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="chart-card" style="margin-top:2rem">
+      <div class="chart-title">Revenue Heatmap by Season & Category</div>
+      <canvas id="heatmapChart" style="max-height:300px"></canvas>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <strong>SeasonIQ</strong> — Seasonal Sales Intelligence Platform &nbsp;|&nbsp;
+  FY 2024–25 Data &nbsp;|&nbsp; Built for strategic retail analytics
+</footer>
+
+<script>
+// ══════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════
+const CATEGORIES = ['Electronics','Apparel','Food & Beverage','Home & Garden','Sports','Health & Beauty','Toys','Footwear'];
+
+const SEASON_META = {
+  summer: { name:'Summer', emoji:'☀', color:'#FF6B35', light:'rgba(255,107,53,0.12)', border:'var(--summer)', desc:'Hot weather drives demand for cooling appliances, beverages, summer apparel, and outdoor sports.' },
+  winter: { name:'Winter', emoji:'❄', color:'#4A90D9', light:'rgba(74,144,217,0.12)', border:'var(--winter)', desc:'Cold months boost heating equipment, warm clothing, comfort food, and indoor entertainment.' },
+  monsoon:{ name:'Monsoon', emoji:'🌧', color:'#2ECC71', light:'rgba(46,204,113,0.12)', border:'var(--monsoon)', desc:'Rainy season lifts umbrellas, rain gear, indoor games, and health products significantly.' },
+  autumn: { name:'Autumn', emoji:'🍂', color:'#E67E22', light:'rgba(230,126,34,0.12)', border:'var(--autumn)', desc:'Festival and harvest season drives gifting, premium apparel, décor, and premium food segments.' },
+};
+
+const MONTHLY = {
+  Summer:  [3.2,4.1,5.6,5.4,4.8,2.3], // Apr–Sep partial
+  Winter:  [1.8,2.4,1.6,3.8,4.2,3.7], // Oct–Mar partial
+  Monsoon: [1.2,2.5,2.9,2.4,1.9,0.8],
+  Autumn:  [0.9,1.4,2.2,2.1,1.6,0.7],
+};
+
+const MONTHS_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHLY_FULL = [2.1,1.9,2.3,3.2,4.1,5.6,5.4,4.8,2.9,3.8,4.2,3.7]; // per month revenue ₹M
+
+const CAT_SEASON = {
+  Electronics:     { Summer:3.8, Winter:3.1, Monsoon:1.8, Autumn:2.2 },
+  Apparel:         { Summer:2.9, Winter:2.5, Monsoon:1.2, Autumn:2.7 },
+  'Food & Beverage':{ Summer:2.4, Winter:1.4, Monsoon:1.9, Autumn:1.3 },
+  'Home & Garden': { Summer:1.8, Winter:1.1, Monsoon:0.9, Autumn:1.4 },
+  Sports:          { Summer:2.1, Winter:0.8, Monsoon:0.6, Autumn:1.0 },
+  'Health & Beauty':{ Summer:1.1, Winter:1.3, Monsoon:2.1, Autumn:0.9 },
+  Toys:            { Summer:0.7, Winter:1.9, Monsoon:0.8, Autumn:1.6 },
+  Footwear:        { Summer:0.6, Winter:0.5, Monsoon:0.7, Autumn:1.1 },
+};
+
+const SEASON_TOTAL = { Summer:15.4, Winter:12.6, Monsoon:10.0, Autumn:9.2 };
+
+// Detailed rows for full report table
+const DETAIL_DATA = [];
+const products = {
+  Electronics:['Air Conditioner','Refrigerator','Smart TV','Laptop','Gaming Console'],
+  Apparel:['Summer Dress','Winter Jacket','Raincoat','Ethnic Wear','Kids Wear'],
+  'Food & Beverage':['Soft Drinks','Health Shakes','Instant Noodles','Premium Tea','Juices'],
+  'Home & Garden':['Garden Tools','Wall Paint','Room Heater','Bed Linen','Curtains'],
+  Sports:['Cricket Kit','Running Shoes','Gym Equipment','Swimming Gear','Badminton Set'],
+  'Health & Beauty':['Sunscreen','Moisturizer','Vitamins','Protein Powder','Hair Care'],
+  Toys:['Board Games','Outdoor Toys','LEGO Set','Action Figures','Plush Toys'],
+  Footwear:['Sandals','Boots','Rain Boots','Sneakers','Formal Shoes'],
+};
+const seasonMonths = {
+  Summer:['April','May','June'],
+  Winter:['November','December','January'],
+  Monsoon:['July','August','September'],
+  Autumn:['October','November','February'],
+};
+const rng=(min,max)=>Math.round(min+(Math.random()*(max-min)));
+Object.entries(seasonMonths).forEach(([season,months])=>{
+  CATEGORIES.forEach(cat=>{
+    products[cat].forEach(prod=>{
+      months.forEach(month=>{
+        const units=rng(800,12000);
+        const price=rng(150,4500);
+        const rev=units*price;
+        const cost=Math.round(rev*rng(40,65)/100);
+        const profit=rev-cost;
+        const margin=Math.round(profit/rev*100);
+        const growth=rng(-8,28);
+        DETAIL_DATA.push({season,month,cat,prod,units,price,rev,cost,profit,margin,growth});
+      });
+    });
+  });
+});
+
+// Prediction data
+const PREDICT_YEARS = ['FY22-23','FY23-24','FY24-25','FY25-26(P)'];
+const PREDICT_DATA = {
+  Summer: [10.2,12.8,15.4,17.1],
+  Winter: [8.4,10.5,12.6,13.8],
+  Monsoon:[7.1,8.6,10.0,11.9],
+  Autumn: [6.0,7.8,9.2,9.4],
+};
+
+// ══════════════════════════════════════════
+// PAGE ROUTING
+// ══════════════════════════════════════════
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  const nl=document.getElementById('nav-'+name);
+  if(nl)nl.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(name==='predict') initPredictCharts();
+  if(name==='report') renderFullReport('all');
+  if(['summer','winter','monsoon','autumn'].includes(name)) buildSeasonPage(name);
+}
+
+// ══════════════════════════════════════════
+// SUMMARY TABLE
+// ══════════════════════════════════════════
+function statusBadge(growth){
+  if(growth>=15) return `<span class="badge" style="background:rgba(46,204,113,0.15);color:#2ecc71">🚀 High</span>`;
+  if(growth>=5)  return `<span class="badge" style="background:rgba(245,200,66,0.15);color:#f5c842">📈 Growing</span>`;
+  if(growth>=0)  return `<span class="badge" style="background:rgba(74,144,217,0.15);color:#4a90d9">➡ Stable</span>`;
+  return `<span class="badge" style="background:rgba(231,76,60,0.15);color:#e74c3c">📉 Declining</span>`;
+}
+function buildSummaryTable(){
+  const tbody=document.getElementById('summary-tbody');
+  if(!tbody)return;
+  const seasonColors={Summer:'var(--summer)',Winter:'var(--winter)',Monsoon:'var(--monsoon)',Autumn:'var(--autumn)'};
+  let html='';
+  Object.entries(CAT_SEASON).forEach(([cat,seasons])=>{
+    Object.entries(seasons).forEach(([season,rev])=>{
+      const units=Math.round(rev*1000000/rng(400,2000));
+      const avg=Math.round(rev*1000000/units);
+      const growth=rng(-5,25);
+      html+=`<tr>
+        <td><span style="color:${seasonColors[season]};font-weight:600">${season}</span></td>
+        <td>${cat}</td>
+        <td>${units.toLocaleString()}</td>
+        <td>₹${rev.toFixed(2)}M</td>
+        <td>₹${avg.toLocaleString()}</td>
+        <td style="color:${growth>=0?'#2ecc71':'#e74c3c'}">${growth>=0?'+':''}${growth}%</td>
+        <td>${statusBadge(growth)}</td>
+      </tr>`;
+    });
+  });
+  tbody.innerHTML=html;
+}
+
+// ══════════════════════════════════════════
+// MAIN CHARTS
+// ══════════════════════════════════════════
+const CHART_DEFAULTS = {
+  color:'rgba(255,255,255,0.7)',
+  grid:'rgba(255,255,255,0.05)',
+};
+function makeChart(id,type,data,options={}){
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  return new Chart(ctx,{type,data,options:{
+    responsive:true,maintainAspectRatio:true,
+    plugins:{legend:{labels:{color:CHART_DEFAULTS.color,font:{family:'DM Sans',size:11}}}},
+    scales:type==='pie'||type==='doughnut'?{}:{
+      x:{grid:{color:CHART_DEFAULTS.grid},ticks:{color:CHART_DEFAULTS.color,font:{family:'DM Sans',size:11}}},
+      y:{grid:{color:CHART_DEFAULTS.grid},ticks:{color:CHART_DEFAULTS.color,font:{family:'DM Sans',size:11}}},
+    },
+    ...options,
+  }});
+}
+
+function initMainCharts(){
+  // Monthly revenue
+  makeChart('mainRevChart','bar',{
+    labels:MONTHS_LABELS,
+    datasets:[{
+      label:'Revenue (₹M)',
+      data:MONTHLY_FULL,
+      backgroundColor:MONTHLY_FULL.map((_,i)=>{
+        if(i>=3&&i<=8) return 'rgba(255,107,53,0.75)';
+        if(i>=6&&i<=8) return 'rgba(46,204,113,0.75)';
+        if(i>=9||i<=2) return 'rgba(74,144,217,0.75)';
+        return 'rgba(230,126,34,0.75)';
+      }),
+      borderRadius:8,
+      borderSkipped:false,
+    }]
+  });
+
+  // Pie
+  makeChart('seasonPieChart','doughnut',{
+    labels:['Summer','Winter','Monsoon','Autumn'],
+    datasets:[{
+      data:[15.4,12.6,10.0,9.2],
+      backgroundColor:['rgba(255,107,53,0.85)','rgba(74,144,217,0.85)','rgba(46,204,113,0.85)','rgba(230,126,34,0.85)'],
+      borderWidth:0,
+      hoverOffset:8,
+    }]
+  },{plugins:{legend:{position:'bottom',labels:{padding:14,color:'rgba(255,255,255,0.7)'}}}});
+
+  // Category grouped bar
+  makeChart('catBarChart','bar',{
+    labels:CATEGORIES.map(c=>c.length>10?c.substring(0,10)+'…':c),
+    datasets:[
+      {label:'Summer',data:CATEGORIES.map(c=>CAT_SEASON[c].Summer),backgroundColor:'rgba(255,107,53,0.75)',borderRadius:4},
+      {label:'Winter',data:CATEGORIES.map(c=>CAT_SEASON[c].Winter),backgroundColor:'rgba(74,144,217,0.75)',borderRadius:4},
+      {label:'Monsoon',data:CATEGORIES.map(c=>CAT_SEASON[c].Monsoon),backgroundColor:'rgba(46,204,113,0.75)',borderRadius:4},
+      {label:'Autumn',data:CATEGORIES.map(c=>CAT_SEASON[c].Autumn),backgroundColor:'rgba(230,126,34,0.75)',borderRadius:4},
+    ]
+  },{plugins:{legend:{position:'bottom'}}});
+
+  // Units line
+  makeChart('unitsChart','line',{
+    labels:MONTHS_LABELS,
+    datasets:[{
+      label:'Units (000s)',
+      data:[88,72,95,132,165,210,185,192,124,155,168,148],
+      borderColor:'rgba(245,200,66,0.9)',
+      backgroundColor:'rgba(245,200,66,0.08)',
+      fill:true,tension:0.42,pointRadius:4,pointHoverRadius:7,
+      pointBackgroundColor:'rgba(245,200,66,1)',
+    }]
+  });
+}
+
+// ══════════════════════════════════════════
+// SEASON PAGES (dynamic build)
+// ══════════════════════════════════════════
+function buildSeasonPage(key){
+  const el=document.getElementById('page-'+key);
+  if(el.dataset.built) return;
+  el.dataset.built=1;
+  const s=SEASON_META[key];
+  const cats=CATEGORIES;
+  const catRevs=cats.map(c=>CAT_SEASON[c][s.name]);
+  const topCat=cats[catRevs.indexOf(Math.max(...catRevs))];
+  const totalRev=SEASON_TOTAL[s.name];
+
+  let catHtml='';
+  cats.forEach((c,i)=>{
+    const rev=CAT_SEASON[c][s.name];
+    const pct=Math.round(rev/totalRev*100);
+    catHtml+=`<div class="cat-card">
+      <div class="cat-name">${c}</div>
+      <div class="cat-rev" style="color:${s.color}">₹${rev.toFixed(1)}M</div>
+      <div class="cat-units">${pct}% of season revenue</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct*1.5}%;background:${s.color}"></div></div>
+    </div>`;
+  });
+
+  el.innerHTML=`<div class="container">
+    <div class="season-hero" style="background:${s.light};border:1px solid ${s.color}33">
+      <div class="big-icon">${s.emoji}</div>
+      <h2 style="color:${s.color}">${s.emoji} ${s.name} Season</h2>
+      <p>${s.desc}</p>
+      <div style="display:flex;gap:2rem;margin-top:1.5rem;flex-wrap:wrap">
+        <div><div style="font-size:0.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Total Revenue</div>
+          <div style="font-family:var(--font-display);font-size:1.8rem;font-weight:800;color:${s.color}">₹${totalRev}M</div></div>
+        <div><div style="font-size:0.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Top Category</div>
+          <div style="font-family:var(--font-display);font-size:1.8rem;font-weight:800">${topCat}</div></div>
+        <div><div style="font-size:0.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em">YoY Growth</div>
+          <div style="font-family:var(--font-display);font-size:1.8rem;font-weight:800;color:#2ecc71">+${rng(8,18)}%</div></div>
+      </div>
+    </div>
+    <div class="section-header">
+      <div class="section-label">${s.name.toUpperCase()} ANALYSIS</div>
+      <h2>Category Breakdown</h2>
+    </div>
+    <div class="category-grid">${catHtml}</div>
+    <div class="chart-grid" style="grid-template-columns:1fr 1fr">
+      <div class="chart-card">
+        <div class="chart-title">Category Revenue Split <span>${s.name}</span></div>
+        <canvas id="chart-${key}-pie"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Monthly Revenue <span>${s.name} months</span></div>
+        <canvas id="chart-${key}-bar"></canvas>
+      </div>
+    </div>
+    <div class="export-bar" style="margin-top:2rem">
+      <span>Export ${s.name} season data</span>
+      <div class="export-btns">
+        <button class="btn btn-excel" onclick="exportExcel()">⬇ Excel</button>
+        <button class="btn btn-pdf" onclick="exportPDF()">⬇ PDF</button>
+      </div>
+    </div>
+  </div>`;
+
+  // draw charts after DOM update
+  setTimeout(()=>{
+    new Chart(document.getElementById('chart-'+key+'-pie'),{
+      type:'doughnut',
+      data:{
+        labels:cats,
+        datasets:[{data:catRevs,backgroundColor:cats.map((_,i)=>`hsl(${i*38},70%,55%)`),borderWidth:0,hoverOffset:6}]
+      },
+      options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'right',labels:{color:'rgba(255,255,255,0.7)',font:{family:'DM Sans',size:10},boxWidth:10}}}}
+    });
+    const mKeys=Object.keys(seasonMonths[s.name]?seasonMonths:{}); // not needed
+    new Chart(document.getElementById('chart-'+key+'-bar'),{
+      type:'bar',
+      data:{
+        labels:seasonMonths[s.name]||['M1','M2','M3'],
+        datasets:[{label:'Revenue ₹M',data:[totalRev*0.28,totalRev*0.38,totalRev*0.34],
+          backgroundColor:s.color+'CC',borderRadius:8}]
+      },
+      options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:'rgba(255,255,255,0.7)'}}},
+        scales:{x:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'rgba(255,255,255,0.7)'}},
+                y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'rgba(255,255,255,0.7)'}}}}
+    });
+  },50);
+}
+
+// ══════════════════════════════════════════
+// PREDICT CHARTS
+// ══════════════════════════════════════════
+let predictChartsBuilt=false;
+function initPredictCharts(){
+  if(predictChartsBuilt)return;
+  predictChartsBuilt=true;
+  setTimeout(()=>{
+    new Chart(document.getElementById('predictChart'),{
+      type:'line',
+      data:{
+        labels:PREDICT_YEARS,
+        datasets:[
+          {label:'Summer',data:PREDICT_DATA.Summer,borderColor:'rgba(255,107,53,1)',backgroundColor:'rgba(255,107,53,0.08)',fill:true,tension:0.4,pointRadius:5,borderWidth:2,
+            segment:{borderDash:ctx=>ctx.p1DataIndex===3?[6,3]:undefined}},
+          {label:'Winter',data:PREDICT_DATA.Winter,borderColor:'rgba(74,144,217,1)',backgroundColor:'rgba(74,144,217,0.08)',fill:true,tension:0.4,pointRadius:5,borderWidth:2,
+            segment:{borderDash:ctx=>ctx.p1DataIndex===3?[6,3]:undefined}},
+          {label:'Monsoon',data:PREDICT_DATA.Monsoon,borderColor:'rgba(46,204,113,1)',backgroundColor:'rgba(46,204,113,0.08)',fill:true,tension:0.4,pointRadius:5,borderWidth:2,
+            segment:{borderDash:ctx=>ctx.p1DataIndex===3?[6,3]:undefined}},
+          {label:'Autumn',data:PREDICT_DATA.Autumn,borderColor:'rgba(230,126,34,1)',backgroundColor:'rgba(230,126,34,0.08)',fill:true,tension:0.4,pointRadius:5,borderWidth:2,
+            segment:{borderDash:ctx=>ctx.p1DataIndex===3?[6,3]:undefined}},
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:true,
+        plugins:{legend:{position:'bottom',labels:{color:'rgba(255,255,255,0.7)',padding:14}}},
+        scales:{x:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'rgba(255,255,255,0.7)'}},
+                y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'rgba(255,255,255,0.7)'},title:{display:true,text:'Revenue (₹M)',color:'rgba(255,255,255,0.5)'}}}}
+    });
+
+    new Chart(document.getElementById('predCatChart'),{
+      type:'bar',
+      data:{
+        labels:CATEGORIES.map(c=>c.length>9?c.substring(0,9)+'…':c),
+        datasets:[{
+          label:'Predicted Revenue ₹M',
+          data:[4.8,3.9,2.8,2.1,2.4,2.2,2.0,1.5],
+          backgroundColor:CATEGORIES.map((_,i)=>`hsla(${i*40+10},72%,56%,0.8)`),
+          borderRadius:8,
+        }]
+      },
+      options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},
+        scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'rgba(255,255,255,0.7)',font:{size:10}}},
+                y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'rgba(255,255,255,0.7)'}}}}
+    });
+
+    new Chart(document.getElementById('riskChart'),{
+      type:'radar',
+      data:{
+        labels:CATEGORIES.map(c=>c.length>10?c.substring(0,10)+'…':c),
+        datasets:[
+          {label:'Summer',data:[9,7,6,5,8,4,3,4],borderColor:'rgba(255,107,53,0.9)',backgroundColor:'rgba(255,107,53,0.1)',pointBackgroundColor:'rgba(255,107,53,1)',borderWidth:2},
+          {label:'Winter',data:[7,6,5,6,4,7,8,6],borderColor:'rgba(74,144,217,0.9)',backgroundColor:'rgba(74,144,217,0.1)',pointBackgroundColor:'rgba(74,144,217,1)',borderWidth:2},
+          {label:'Monsoon',data:[4,3,7,4,3,8,4,5],borderColor:'rgba(46,204,113,0.9)',backgroundColor:'rgba(46,204,113,0.1)',pointBackgroundColor:'rgba(46,204,113,1)',borderWidth:2},
+          {label:'Autumn',data:[5,8,4,6,5,4,7,7],borderColor:'rgba(230,126,34,0.9)',backgroundColor:'rgba(230,126,34,0.1)',pointBackgroundColor:'rgba(230,126,34,1)',borderWidth:2},
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:true,
+        plugins:{legend:{position:'bottom',labels:{color:'rgba(255,255,255,0.7)',padding:12}}},
+        scales:{r:{grid:{color:'rgba(255,255,255,0.07)'},ticks:{color:'rgba(255,255,255,0.4)',backdropColor:'transparent',font:{size:9}},
+          pointLabels:{color:'rgba(255,255,255,0.65)',font:{size:10}}}}}
+    });
+  },80);
+}
+
+// ══════════════════════════════════════════
+// FULL REPORT TABLE + FILTER
+// ══════════════════════════════════════════
+let heatmapBuilt=false;
+function renderFullReport(filter){
+  const tbody=document.getElementById('full-report-tbody');
+  if(!tbody)return;
+  const sColors={Summer:'var(--summer)',Winter:'var(--winter)',Monsoon:'var(--monsoon)',Autumn:'var(--autumn)'};
+  const rows=filter==='all'?DETAIL_DATA:DETAIL_DATA.filter(r=>r.season===filter);
+  tbody.innerHTML=rows.map(r=>`<tr>
+    <td><span style="color:${sColors[r.season]};font-weight:600">${r.season}</span></td>
+    <td style="color:var(--muted)">${r.month}</td>
+    <td>${r.cat}</td>
+    <td style="font-weight:500">${r.prod}</td>
+    <td>${r.units.toLocaleString()}</td>
+    <td>₹${r.rev.toLocaleString()}</td>
+    <td>₹${r.price.toLocaleString()}</td>
+    <td>₹${r.cost.toLocaleString()}</td>
+    <td style="color:#2ecc71">₹${r.profit.toLocaleString()}</td>
+    <td>${r.margin}%</td>
+    <td style="color:${r.growth>=0?'#2ecc71':'#e74c3c'}">${r.growth>=0?'+':''}${r.growth}%</td>
+    <td>${statusBadge(r.growth)}</td>
+  </tr>`).join('');
+
+  if(!heatmapBuilt){
+    heatmapBuilt=true;
+    setTimeout(()=>{
+      new Chart(document.getElementById('heatmapChart'),{
+        type:'bar',
+        data:{
+          labels:CATEGORIES.map(c=>c.length>12?c.substring(0,12)+'…':c),
+          datasets:[
+            {label:'Summer',data:CATEGORIES.map(c=>CAT_SEASON[c].Summer),backgroundColor:'rgba(255,107,53,0.8)',borderRadius:4},
+            {label:'Winter',data:CATEGORIES.map(c=>CAT_SEASON[c].Winter),backgroundColor:'rgba(74,144,217,0.8)',borderRadius:4},
+            {label:'Monsoon',data:CATEGORIES.map(c=>CAT_SEASON[c].Monsoon),backgroundColor:'rgba(46,204,113,0.8)',borderRadius:4},
+            {label:'Autumn',data:CATEGORIES.map(c=>CAT_SEASON[c].Autumn),backgroundColor:'rgba(230,126,34,0.8)',borderRadius:4},
+          ]
+        },
+        options:{responsive:true,maintainAspectRatio:true,
+          plugins:{legend:{position:'bottom',labels:{color:'rgba(255,255,255,0.7)',padding:14}}},
+          scales:{
+            x:{stacked:false,grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'rgba(255,255,255,0.7)'}},
+            y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'rgba(255,255,255,0.7)'},title:{display:true,text:'Revenue (₹M)',color:'rgba(255,255,255,0.4)'}}
+          }}
+      });
+    },80);
+  }
+}
+
+function filterReport(season, btn){
+  document.querySelectorAll('#report-filters .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFullReport(season);
+}
+
+// ══════════════════════════════════════════
+// EXPORT PDF
+// ══════════════════════════════════════════
+function exportPDF(){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  const W=doc.internal.pageSize.getWidth();
+
+  // Cover page
+  doc.setFillColor(10,14,26);
+  doc.rect(0,0,W,210,'F');
+  doc.setFillColor(245,200,66);
+  doc.rect(0,0,W,2,'F');
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(28);doc.setTextColor(245,200,66);
+  doc.text('SeasonIQ',14,28);
+  doc.setFontSize(14);doc.setTextColor(240,244,255);
+  doc.text('Seasonal Sales & Revenue Impact Analysis',14,38);
+  doc.setFontSize(10);doc.setTextColor(136,153,180);
+  doc.text(`Generated: ${new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})} | FY 2024–25`,14,48);
+
+  // Summary stats
+  doc.setFillColor(21,29,46);
+  doc.roundedRect(14,58,60,36,3,3,'F');
+  doc.roundedRect(80,58,60,36,3,3,'F');
+  doc.roundedRect(146,58,60,36,3,3,'F');
+  doc.roundedRect(212,58,60,36,3,3,'F');
+
+  const stats=[
+    ['Total Revenue','₹48.7M','↑ 14.2% YoY'],
+    ['Best Season','Summer','₹15.4M'],
+    ['Total Units','2.3M','↑ 9.6% growth'],
+    ['Avg Order','₹2,120','↑ 4.3%'],
+  ];
+  const cols=[14,80,146,212];
+  stats.forEach(([label,val,sub],i)=>{
+    doc.setFontSize(8);doc.setTextColor(136,153,180);
+    doc.text(label,cols[i]+4,68);
+    doc.setFontSize(14);doc.setTextColor(240,244,255);doc.setFont('helvetica','bold');
+    doc.text(val,cols[i]+4,78);
+    doc.setFontSize(8);doc.setTextColor(46,204,113);
+    doc.text(sub,cols[i]+4,86);
+  });
+
+  // Season totals table
+  doc.setFontSize(12);doc.setTextColor(245,200,66);doc.setFont('helvetica','bold');
+  doc.text('Season Revenue Summary',14,108);
+  doc.autoTable({
+    startY:112,
+    head:[['Season','Total Revenue (₹M)','Best Category','YoY Growth','Predicted FY26']],
+    body:[
+      ['☀ Summer','15.4','Electronics','+12.1%','₹17.1M'],
+      ['❄ Winter','12.6','Electronics','+8.3%','₹13.8M'],
+      ['🌧 Monsoon','10.0','Food & Bev','+6.2%','₹11.9M'],
+      ['🍂 Autumn','9.2','Apparel','+5.8%','₹9.4M'],
+    ],
+    styles:{fillColor:[21,29,46],textColor:[240,244,255],fontSize:10,cellPadding:5},
+    headStyles:{fillColor:[28,37,55],textColor:[245,200,66],fontSize:10,fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[17,24,39]},
+    margin:{left:14,right:14},
+  });
+
+  // Page 2 — category breakdown
+  doc.addPage();
+  doc.setFillColor(10,14,26);doc.rect(0,0,W,210,'F');
+  doc.setFillColor(245,200,66);doc.rect(0,0,W,2,'F');
+  doc.setFontSize(14);doc.setTextColor(245,200,66);doc.setFont('helvetica','bold');
+  doc.text('Category × Season Revenue (₹M)',14,18);
+
+  const catRows=CATEGORIES.map(c=>[c,
+    CAT_SEASON[c].Summer.toFixed(1),
+    CAT_SEASON[c].Winter.toFixed(1),
+    CAT_SEASON[c].Monsoon.toFixed(1),
+    CAT_SEASON[c].Autumn.toFixed(1),
+    (CAT_SEASON[c].Summer+CAT_SEASON[c].Winter+CAT_SEASON[c].Monsoon+CAT_SEASON[c].Autumn).toFixed(1)
+  ]);
+  doc.autoTable({
+    startY:24,
+    head:[['Category','Summer','Winter','Monsoon','Autumn','Total']],
+    body:catRows,
+    styles:{fillColor:[21,29,46],textColor:[240,244,255],fontSize:10,cellPadding:5},
+    headStyles:{fillColor:[28,37,55],textColor:[245,200,66],fontSize:10},
+    alternateRowStyles:{fillColor:[17,24,39]},
+    margin:{left:14,right:14},
+  });
+
+  // Page 3 — Predictions
+  doc.addPage();
+  doc.setFillColor(10,14,26);doc.rect(0,0,W,210,'F');
+  doc.setFillColor(245,200,66);doc.rect(0,0,W,2,'F');
+  doc.setFontSize(14);doc.setTextColor(245,200,66);doc.setFont('helvetica','bold');
+  doc.text('Predictive Revenue Forecast FY 2022–26',14,18);
+  doc.autoTable({
+    startY:24,
+    head:[['Season','FY 22-23 (₹M)','FY 23-24 (₹M)','FY 24-25 (₹M)','FY 25-26 Predicted','Confidence']],
+    body:[
+      ['☀ Summer','10.2','12.8','15.4','17.1','87%'],
+      ['❄ Winter','8.4','10.5','12.6','13.8','82%'],
+      ['🌧 Monsoon','7.1','8.6','10.0','11.9','79%'],
+      ['🍂 Autumn','6.0','7.8','9.2','9.4','75%'],
+    ],
+    styles:{fillColor:[21,29,46],textColor:[240,244,255],fontSize:10,cellPadding:5},
+    headStyles:{fillColor:[28,37,55],textColor:[245,200,66],fontSize:10},
+    alternateRowStyles:{fillColor:[17,24,39]},
+    margin:{left:14,right:14},
+  });
+
+  doc.setFontSize(8);doc.setTextColor(136,153,180);
+  doc.text('SeasonIQ Platform | Confidential – For Internal Use Only',14,200);
+
+  doc.save('SeasonIQ_Seasonal_Analysis.pdf');
+}
+
+// ══════════════════════════════════════════
+// EXPORT EXCEL
+// ══════════════════════════════════════════
+function exportExcel(){
+  const wb=XLSX.utils.book_new();
+
+  // Sheet 1 — Summary
+  const summaryRows=[
+    ['SeasonIQ — Seasonal Sales & Revenue Analysis Report'],
+    [`Generated: ${new Date().toLocaleDateString('en-IN')}`],
+    [],
+    ['SEASON SUMMARY'],
+    ['Season','Total Revenue (₹M)','Best Category','Units Sold (M)','YoY Growth %','Predicted FY26 (₹M)','Confidence'],
+    ['Summer',15.4,'Electronics',0.62,12.1,17.1,'87%'],
+    ['Winter',12.6,'Electronics',0.50,8.3,13.8,'82%'],
+    ['Monsoon',10.0,'Food & Beverage',0.41,6.2,11.9,'79%'],
+    ['Autumn',9.2,'Apparel',0.37,5.8,9.4,'75%'],
+    [],
+    ['ANNUAL TOTALS'],
+    ['Total Revenue','₹48.7M'],
+    ['Total Units Sold','2.3M'],
+    ['Average Order Value','₹2,120'],
+    ['Overall YoY Growth','14.2%'],
+  ];
+  const ws1=XLSX.utils.aoa_to_sheet(summaryRows);
+  ws1['!cols']=[{wch:24},{wch:20},{wch:20},{wch:18},{wch:16},{wch:22},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws1,'Summary');
+
+  // Sheet 2 — Category Breakdown
+  const catHeader=['Category','Summer (₹M)','Winter (₹M)','Monsoon (₹M)','Autumn (₹M)','Total (₹M)'];
+  const catRows=CATEGORIES.map(c=>[c,
+    CAT_SEASON[c].Summer,CAT_SEASON[c].Winter,CAT_SEASON[c].Monsoon,CAT_SEASON[c].Autumn,
+    +(CAT_SEASON[c].Summer+CAT_SEASON[c].Winter+CAT_SEASON[c].Monsoon+CAT_SEASON[c].Autumn).toFixed(2)
+  ]);
+  const ws2=XLSX.utils.aoa_to_sheet([['SeasonIQ — Category × Season Revenue'],[],catHeader,...catRows]);
+  ws2['!cols']=[{wch:22},{wch:15},{wch:15},{wch:15},{wch:15},{wch:15}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Category Breakdown');
+
+  // Sheet 3 — Monthly Data
+  const monthlyHeader=['Month','Revenue (₹M)','Units Sold (000s)','Avg Order Value (₹)','Season'];
+  const seasonByMonth=['Winter','Winter','Winter','Summer','Summer','Summer','Monsoon','Monsoon','Monsoon','Autumn','Winter','Winter'];
+  const monthlyRows=MONTHS_LABELS.map((m,i)=>[m,MONTHLY_FULL[i],[88,72,95,132,165,210,185,192,124,155,168,148][i],rng(1800,2500),seasonByMonth[i]]);
+  const ws3=XLSX.utils.aoa_to_sheet([['SeasonIQ — Monthly Revenue Data'],[],monthlyHeader,...monthlyRows]);
+  ws3['!cols']=[{wch:12},{wch:16},{wch:18},{wch:20},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws3,'Monthly Data');
+
+  // Sheet 4 — Detailed Transactions (first 500)
+  const detHeader=['Season','Month','Category','Product','Units Sold','Revenue (₹)','Avg Price (₹)','Cost (₹)','Profit (₹)','Margin %','Growth %'];
+  const detRows=DETAIL_DATA.slice(0,500).map(r=>[r.season,r.month,r.cat,r.prod,r.units,r.rev,r.price,r.cost,r.profit,r.margin,r.growth]);
+  const ws4=XLSX.utils.aoa_to_sheet([['SeasonIQ — Detailed Transactions (Sample 500)'],[],detHeader,...detRows]);
+  ws4['!cols']=[{wch:12},{wch:12},{wch:18},{wch:22},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws4,'Detailed Transactions');
+
+  // Sheet 5 — Predictions
+  const predHeader=['Season','FY 22-23 (₹M)','FY 23-24 (₹M)','FY 24-25 (₹M)','FY 25-26 Predicted (₹M)','Confidence %'];
+  const predRows=[
+    ['Summer',10.2,12.8,15.4,17.1,87],
+    ['Winter',8.4,10.5,12.6,13.8,82],
+    ['Monsoon',7.1,8.6,10.0,11.9,79],
+    ['Autumn',6.0,7.8,9.2,9.4,75],
+  ];
+  const ws5=XLSX.utils.aoa_to_sheet([['SeasonIQ — Predictive Forecast Data'],[],predHeader,...predRows]);
+  ws5['!cols']=[{wch:14},{wch:16},{wch:16},{wch:16},{wch:24},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws5,'Predictions');
+
+  XLSX.writeFile(wb,'SeasonIQ_Seasonal_Analysis.xlsx');
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+window.addEventListener('DOMContentLoaded',()=>{
+  initMainCharts();
+  buildSummaryTable();
+});
+</script>
+</body>
+</html>
